@@ -12,7 +12,7 @@ const apiSecret = process.env.SHOPIFY_API_SECRET;
 const scopes = "read_products,write_products";
 // leave access mode blank for background tasks
 const accessMode = "per-user";
-const forwardingAddress = "https://c51b91864a1a.ngrok.io";
+const forwardingAddress = process.env.NGROK_ADDRESS;
 
 app.get("/", (req, res) => {
   // out to frontend???
@@ -31,8 +31,9 @@ app.get("/auth", (req, res) => {
     const redirectUri = forwardingAddress + "/auth/callback";
     const installUrl = `https://${shop}.myshopify.com/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}&grant_options[]=${accessMode}`;
     console.log(installUrl);
-    console.log("state: " + state);
-    res.setHeader("Set-Cookie", cookie.serialize("state", String(state)));
+    console.log("previous cookie: " + state);
+    // res.setHeader("Set-Cookie", cookie.serialize("state", String(state)));
+    res.cookie("state", state, { maxAge: 900000, httpOnly: true });
     res.redirect(installUrl);
   } else {
     return res.status(400).send("Missing shop param");
@@ -43,11 +44,12 @@ app.get("/auth/callback", (req, res) => {
   const { nonce, hmac, hostname, state } = req.query;
   const cookies = cookie.parse(req.headers.cookie);
   const stateCookie = cookies.state;
-  console.log(req.headers);
-  console.log(stateCookie);
+  // console.log(req.headers);
+  console.log("current cookie:" + stateCookie);
   if (state !== stateCookie) {
     return res.status(403).send("Request Origin cannot be verified");
   }
+  if()
 });
 
 // https://kemeza-app.myshopify.com/admin/oauth/authorize?client_id=f35ce46dc6c1ef29c7583ac8c36cf8f0&scope=read_products,write_products&redirect_uri=https://c51b91864a1a.ngrok.io/auth/callback&state=160737476477700&grant_options[]=per-user
