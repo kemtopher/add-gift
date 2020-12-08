@@ -1,8 +1,7 @@
-const dotenv = require("dotenv").config();
+require("dotenv").config();
 const express = require("express");
 const app = express();
 const crypto = require("crypto");
-const cookie = require("cookie");
 const nonce = require("nonce")();
 const querystring = require("querystring");
 const { response } = require("express");
@@ -16,9 +15,9 @@ const accessMode = "per-user";
 const forwardingAddress = process.env.NGROK_ADDRESS;
 let cachedState = 425352345;
 let accessCode;
+let accessToken;
 
 app.get("/", (req, res) => {
-  // out to frontend???
   res.send("hello world");
 });
 
@@ -47,11 +46,11 @@ app.get("/auth/callback", (req, res) => {
   const hostnameVerified = regEx.test(shop);
 
   if (stateToNum !== stateCookie) {
-    return res.status(403).send("Request Origin cannot be verified");
+    return res.status(403).send("Request origin cannot be verified");
   }
 
   if (hostnameVerified === false) {
-    return res.status(403).send("Shop origin can not be varified");
+    return res.status(403).send("Shop origin can not be verified");
   }
 
   if (hmac && shop) {
@@ -79,21 +78,23 @@ app.get("/auth/callback", (req, res) => {
     request
       .post(accessTokenUrl, { json: payload })
       .then((res) => {
-        let accessToken = res.access_token;
+        accessToken = res.access_token;
 
-        const shopRequestUrl = `https://${shop}/admin/api/2020-10/products.json`;
-        const requestHeaders = {
-          "X-Shopify-Access-Token": accessToken,
-        };
-        request
-          .get(shopRequestUrl, { headers: requestHeaders })
-          .then((shopResponse) => {
-            console.log(shopResponse);
-            return shopResponse;
-          })
-          .catch((err) => {
-            console.log(err);
-          });
+        // const shopRequestUrl = `https://${shop}/admin/api/2020-10/products.json`;
+        // const requestHeaders = {
+        //   "X-Shopify-Access-Token": accessToken,
+        // };
+        // request
+        //   .get(shopRequestUrl, { headers: requestHeaders })
+        //   .then((shopResponse) => {
+        //     console.log(shopResponse);
+        //     return shopResponse;
+        //   })
+        //   .catch((err) => {
+        //     console.log(err);
+        //   });
+
+        // redirect out to the app's homepage
       })
       .catch((err) => {
         console.log(err);
@@ -102,28 +103,3 @@ app.get("/auth/callback", (req, res) => {
     res.status(400).send("Required params missing");
   }
 });
-
-// console.log("MY PAYLOAD: " + payload);
-// async function getToken(url = "", data = {}) {
-//   const response = await fetch(url, {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify(payload),
-//   });
-//   console.log("EARLY RESPONSE: " + response.body);
-//   return response.json();
-// }
-
-// getToken(accessTokenUrl, payload)
-//   .then((res) => {
-//     console.log("LOGGED RESPONSE: " + res);
-//     return res.json();
-//   })
-//   .then((data) => {
-//     console.log("LOGGED DATA: " + JSON.stringify(data));
-//   })
-//   .catch((err) => {
-//     console.log("LOGGED ERROR: " + err);
-//   });
