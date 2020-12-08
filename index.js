@@ -13,6 +13,7 @@ const scopes = "read_products,write_products";
 // leave access mode blank for background tasks
 const accessMode = "per-user";
 const forwardingAddress = process.env.NGROK_ADDRESS;
+let cachedState = 1234456789;
 
 app.get("/", (req, res) => {
   // out to frontend???
@@ -27,13 +28,10 @@ app.listen(3000, () => {
 app.get("/auth", (req, res) => {
   const shop = req.query.shop;
   if (shop) {
-    const state = nonce();
+    cachedState = nonce();
     const redirectUri = forwardingAddress + "/auth/callback";
-    const installUrl = `https://${shop}.myshopify.com/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}&grant_options[]=${accessMode}`;
+    const installUrl = `https://${shop}.myshopify.com/admin/oauth/authorize?client_id=${apiKey}&scope=${scopes}&redirect_uri=${redirectUri}&state=${cachedState}&grant_options[]=${accessMode}`;
     console.log(installUrl);
-    console.log("previous cookie: " + state);
-    // res.setHeader("Set-Cookie", cookie.serialize("state", String(state)));
-    res.cookie("state", state, { maxAge: 900000, httpOnly: true });
     res.redirect(installUrl);
   } else {
     return res.status(400).send("Missing shop param");
@@ -41,15 +39,38 @@ app.get("/auth", (req, res) => {
 });
 
 app.get("/auth/callback", (req, res) => {
-  const { nonce, hmac, hostname, state } = req.query;
-  const cookies = cookie.parse(req.headers.cookie);
-  const stateCookie = cookies.state;
-  // console.log(req.headers);
-  console.log("current cookie:" + stateCookie);
-  if (state !== stateCookie) {
+  const { nonce, hmac, shop, state } = req.query;
+  const stateToNum = Number(req.query.state);
+  const stateCookie = cachedState;
+  const regEx = new RegExp(/[a-zA-Z0-9][a-zA-Z0-9-]*.myshopify.com[/]?/);
+  const hostnameVerified = regEx.test(shop);
+
+  if (stateToNum !== stateCookie) {
     return res.status(403).send("Request Origin cannot be verified");
   }
-  if()
-});
 
-// https://kemeza-app.myshopify.com/admin/oauth/authorize?client_id=f35ce46dc6c1ef29c7583ac8c36cf8f0&scope=read_products,write_products&redirect_uri=https://c51b91864a1a.ngrok.io/auth/callback&state=160737476477700&grant_options[]=per-user
+  if (hostnameVerified === false) {
+    return res.status(403).send("Shop origin can not be varified");
+  } else {
+    console.log(`regEx expression passed with: ${hostnameVerified}`);
+  }
+
+  if (hmac) {
+    const map = Object.assign({}, req.query);
+    delete map["hmac"];
+    const message = querystring.stringify(map);
+    console.log(`old message: ${message}`);
+    const hash = crypto
+      .createHmac("sha256", apiSecret)
+      .update(message)
+      .digest("hex");
+    console.log(`hash   : ${hash}`);
+    console.log(`hmac   : ${hmac}`);
+    console.log(`new message: ${message}`);
+    if (hash !== hmac) {
+      return res.status(400).send("HMAC validations failed");
+    } else {
+      return res.status(200).send("HMAC validated");
+    }
+  }
+});
