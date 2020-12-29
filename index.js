@@ -12,13 +12,30 @@ const apiSecret = process.env.SHOPIFY_API_SECRET;
 const scopes = "read_products,write_products";
 // leave access mode blank for background tasks
 const accessMode = "per-user";
-const forwardingAddress = process.env.NGROK_ADDRESS;
+const forwardingAddress = process.env.APP_URL;
 let cachedState = 425352345;
 let accessCode;
 let accessToken;
+let shop = "kemeza-app.myshopify.com";
 
 app.get("/", (req, res) => {
-  res.send("hello world");
+  //  this is just a test request to retrieve all products from specific store via Admin API.
+  //   if(!accessToken) {
+  //     get a new token for the current session?
+  //   }
+  // const shopRequestUrl = `https://${shop}/admin/api/2020-10/products.json`;
+  // const requestHeaders = {
+  //   "X-Shopify-Access-Token": accessToken,
+  // };
+  // request
+  //   .get(shopRequestUrl, { headers: requestHeaders })
+  //   .then((shopResponse) => {
+  //     console.log(shopResponse);
+  //   })
+  //   .catch((err) => {
+  //     console.log(err);
+  //   });
+  res.send("main page");
 });
 
 app.listen(3000, () => {
@@ -79,22 +96,8 @@ app.get("/auth/callback", (req, res) => {
       .post(accessTokenUrl, { json: payload })
       .then((res) => {
         accessToken = res.access_token;
-
-        // const shopRequestUrl = `https://${shop}/admin/api/2020-10/products.json`;
-        // const requestHeaders = {
-        //   "X-Shopify-Access-Token": accessToken,
-        // };
-        // request
-        //   .get(shopRequestUrl, { headers: requestHeaders })
-        //   .then((shopResponse) => {
-        //     console.log(shopResponse);
-        //     return shopResponse;
-        //   })
-        //   .catch((err) => {
-        //     console.log(err);
-        //   });
-
-        // redirect out to the app's homepage
+        const newUrl = forwardingAddress;
+        res.status(200).redirect(newUrl);
       })
       .catch((err) => {
         console.log(err);
@@ -102,4 +105,12 @@ app.get("/auth/callback", (req, res) => {
   } else {
     res.status(400).send("Required params missing");
   }
+});
+
+app.get("/app", (req, res) => {
+  res.send("app endpoint");
+});
+
+app.get("/app/create-product", (req, res) => {
+  res.send("safe at home");
 });
